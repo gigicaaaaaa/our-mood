@@ -22,13 +22,11 @@ export function NotesPage({ onBack, onLogout }: NotesPageProps) {
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
 
-  // 🔥 pegar usuário logado
   const getUser = async () => {
     const { data } = await supabase.auth.getUser();
     return data.user;
   };
 
-  // 🔥 carregar notas (AGORA FILTRANDO POR USER)
   const loadNotes = async () => {
     const user = await getUser();
     if (!user) return;
@@ -36,7 +34,7 @@ export function NotesPage({ onBack, onLogout }: NotesPageProps) {
     const { data, error } = await supabase
       .from('notes')
       .select('*')
-      .eq('user_id', user.id) // 👈 CORREÇÃO PRINCIPAL
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -51,7 +49,6 @@ export function NotesPage({ onBack, onLogout }: NotesPageProps) {
     loadNotes();
   }, []);
 
-  // 🔥 adicionar nota
   const handleAddNote = async () => {
     const user = await getUser();
     if (!user) return;
@@ -62,8 +59,8 @@ export function NotesPage({ onBack, onLogout }: NotesPageProps) {
       {
         title: newTitle || 'Sem título',
         content: newContent,
-        user_id: user.id
-      }
+        user_id: user.id,
+      },
     ]);
 
     if (error) console.error(error);
@@ -74,7 +71,6 @@ export function NotesPage({ onBack, onLogout }: NotesPageProps) {
     loadNotes();
   };
 
-  // 🔥 deletar
   const handleDeleteNote = async (id: string) => {
     if (!confirm('Tem certeza que deseja deletar esta anotação?')) return;
 
@@ -88,14 +84,12 @@ export function NotesPage({ onBack, onLogout }: NotesPageProps) {
     loadNotes();
   };
 
-  // 🔥 iniciar edição
   const handleStartEdit = (note: Note) => {
     setEditingId(note.id);
     setEditTitle(note.title);
     setEditContent(note.content);
   };
 
-  // 🔥 salvar edição
   const handleSaveEdit = async () => {
     if (!editingId) return;
 
@@ -103,7 +97,7 @@ export function NotesPage({ onBack, onLogout }: NotesPageProps) {
       .from('notes')
       .update({
         title: editTitle || 'Sem título',
-        content: editContent
+        content: editContent,
       })
       .eq('id', editingId);
 
@@ -123,7 +117,6 @@ export function NotesPage({ onBack, onLogout }: NotesPageProps) {
 
   return (
     <div className="min-h-screen w-full p-8">
-      
       <h1>Minhas Anotações</h1>
 
       <button onClick={onBack}>voltar</button>
