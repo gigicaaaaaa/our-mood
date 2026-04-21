@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { supabase } from './utils/supabase/client';
+
 import { SimpleLoginPage } from './components/SimpleLoginPage';
 import { MenuPage } from './components/MenuPage';
 import { SimpleHomePage } from './components/SimpleHomePage';
@@ -12,82 +14,104 @@ type Page = 'login' | 'menu' | 'discord' | 'notes' | 'study' | 'calendar' | 'pro
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
   const [isChecking, setIsChecking] = useState(true);
-  const [username, setUsername] = useState<string>('');
+  const [user, setUser] = useState<any>(null);
 
+  // 🔥 VERIFICA LOGIN REAL
   useEffect(() => {
-    // Check if user has valid session token
-    const token = localStorage.getItem('sessionToken');
-    const savedUsername = localStorage.getItem('username');
-    if (token && savedUsername) {
-      setUsername(savedUsername);
-      setCurrentPage('menu');
-    }
-    setIsChecking(false);
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getSession();
+
+      if (data.session) {
+        setUser(data.session.user);
+        setCurrentPage('menu');
+      }
+
+      setIsChecking(false);
+    };
+
+    checkUser();
+
+    // 🔥 ESCUTA LOGIN/LOGOUT
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session) {
+          setUser(session.user);
+          setCurrentPage('menu');
+        } else {
+          setUser(null);
+          setCurrentPage('login');
+        }
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogin = () => {
-    const savedUsername = localStorage.getItem('username');
-    if (savedUsername) {
-      setUsername(savedUsername);
-    }
     setCurrentPage('menu');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('sessionToken');
-    localStorage.removeItem('username');
-    setUsername('');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
     setCurrentPage('login');
   };
 
   if (isChecking) {
     return (
-      <div className="size-full flex items-center justify-center bg-background">
-        <div className="text-foreground lowercase">carregando...</div>
+      <div className="size-full flex items-center justify-center">
+        carregando...
       </div>
     );
   }
 
   const handleSelectOption = (option: string) => {
-    if (option === 'discord') {
-      setCurrentPage('discord');
-    } else if (option === 'notes') {
-      setCurrentPage('notes');
-    } else if (option === 'study') {
-      setCurrentPage('study');
-    } else if (option === 'calendar') {
-      setCurrentPage('calendar');
-    }
+    if (option === 'discord') setCurrentPage('discord');
+    if (option === 'notes') setCurrentPage('notes');
+    if (option === 'study') setCurrentPage('study');
+    if (option === 'calendar') setCurrentPage('calendar');
   };
 
-  const handleBack = () => {
-    setCurrentPage('menu');
-  };
-
-  const handleProfile = () => {
-    setCurrentPage('profile');
-  };
+  const handleBack = () => setCurrentPage('menu');
+  const handleProfile = () => setCurrentPage('profile');
 
   return (
     <div className="size-full">
       {currentPage === 'login' && (
         <SimpleLoginPage onLogin={handleLogin} />
       )}
+
       {currentPage === 'menu' && (
-        <MenuPage onSelectOption={handleSelectOption} onLogout={handleLogout} onProfile={handleProfile} username={username} />
+        <MenuPage
+          onSelectOption={handleSelectOption}
+          onLogout={handleLogout}
+          onProfile={handleProfile}
+          username={user?.email || 'user'}
+        />
       )}
+
       {currentPage === 'profile' && (
-        <ProfilePage onBack={handleBack} onLogout={handleLogout} username={username} />
+        <ProfilePage
+          onBack={handleBack}
+          onLogout={handleLogout}
+          username={user?.email || 'user'}
+        />
       )}
+
       {currentPage === 'discord' && (
         <SimpleHomePage onLogout={handleLogout} onBack={handleBack} />
       )}
+
       {currentPage === 'notes' && (
         <NotesPage onBack={handleBack} onLogout={handleLogout} />
       )}
+
       {currentPage === 'study' && (
         <StudyPage onBack={handleBack} onLogout={handleLogout} />
       )}
+
       {currentPage === 'calendar' && (
         <CalendarPage onBack={handleBack} onLogout={handleLogout} />
       )}
